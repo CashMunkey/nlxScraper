@@ -1,79 +1,121 @@
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Properties;
+import java.util.ArrayList;
 import java.util.concurrent.TimeUnit;
 
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 
 import common.CsvWriter;
+import common.Logger;
 import common.RunProperties;
-import components.Listing;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import pages.LandingPage;
-import pages.ResultsPage;
+import pages.ListingPage;
+import pages.SearchPage;
 
 public class Main {
 
-	private static HashMap<String, Integer> total = new HashMap<>();
+	private static final org.slf4j.Logger LOG = Logger.getInstance();
 	
-	
+	private static ArrayList<String> lines = new ArrayList<>();
+	private static RunProperties properties = RunProperties.getInstance();
+
+
 	public static void main(String[] args) {
-		RunProperties properties = RunProperties.getInstance();
 		WebDriver driver = configureDriver();
-		
+		 // add headers
+		lines.add("Job Title,Company Name,Location,Date Posted,Link,Match Score");
+
 		LandingPage start = new LandingPage(driver);
-		ResultsPage results = start.search(properties.getJobTitle(), properties.getLocation());
+		SearchPage results = start.search(properties.getJobTitle(), properties.getLocation());
+
+		// go through all pages & listings and return the ones that match our criteria
+		results = results.filterNewToOld();
+		int pageCount = results.getNumberOfPages();
 		
-		results = results.setMaxPerPage();
-		int pageCount = results.pageCount;
-		for(int i = 0; i < pageCount; i++) {
-			getTally(results.getAllJobs(), properties.getDateFilter());
-			
-			if( i < pageCount - 1) {
-				results = results.goToNextPage();
-			}
-		}		
-		driver.close();
-		
-		CsvWriter csvFile = null;
 		try {
-			System.out.println("Writing output to " + System.getProperty("user.dir") + properties.getOutputPath());
-			csvFile = new CsvWriter(properties.getOutputPath(), "Company Name", "Open Listings");			
-			csvFile.mapToCsv(total, "\nFederal Contractor");
-			
-			properties.close();
-			csvFile.close();
-		} catch (IOException e) {
-			System.out.println(e);
-		} 
+			for (int i = 0; i < pageCount; i++) {
+				SearchPage prev = results;
+				results = scrapeListings(results);
+				
+				if (results.equals(prev)) {
+					return;
+				} else if (i < pageCount - 1) {
+					results = results.goToNextPage();
+				}
+			}
+		} catch (Exception e) {
+			LOG.error(e.getLocalizedMessage());
+		} finally {
+			CsvWriter.writeLiteral(properties.getOutputPath(), lines);
+			driver.close();
+		}		
 	}
+	
+	/*
+	public static void main(String[] args) {
+		WebDriver driver = configureDriver();
+		lines.add("Job Title,Company Name,Location,Date Posted,Match Score,Link"); // add headers
+
+		LandingPage start = new LandingPage(driver);
+		SearchPage results = start.search(properties.getJobTitle(), properties.getLocation());
+
+		results = results.filterNewToOld();	
+		try {
+			scrapeListings(results);
+		} catch (Exception e) {
+			LOG.error(e.getMessage());
+		} finally {
+			driver.close();
+			CsvWriter.writeLiteral(properties.getOutputPath(), lines);
+		}
+	}
+	*/
 
 	private static WebDriver configureDriver() {
 		WebDriverManager.chromedriver().setup();
 		WebDriver driver = new ChromeDriver();
-		driver.manage().timeouts().implicitlyWait(60, TimeUnit.SECONDS);
-		
+		driver.manage().timeouts().implicitlyWait(30, TimeUnit.SECONDS);
+
 		return driver;
 	}
 	
-	private static void getTally(List<Listing> listings, LocalDate excludeBefore) {
-		for(Listing listing : listings) {			
-			if(!listing.getDatePosted().isBefore(excludeBefore)) {
-				String company = listing.getCompanyName();
-				Integer numberOfListings = total.get(company);
-				
-				if(numberOfListings == null) {
-					total.put(company, 1);
-				} else {
-					total.put(company, numberOfListings+1);
-				}
-			}
-		}
+	private static String listingToCsvRow(SearchPage.Listing listing) {
+			StringBuilder row = new StringBuilder();
+			
+			row.append("\"" + listing.getJobTitle() + "\",");
+			row.append("\"" + listing.getCompanyName() + "\",");
+			row.append("\"" + listing.getLocation() + "\",");
+			row.append(listing.getDatePosted() + ",");
+			row.append("\"" + listing.getLink() + "\"");
+			
+			return row.toString();
 	}
 	
+	public static SearchPage scrapeListings(SearchPage results) {
+		int numListings = results.getAllJobs().size();
+		for (int j = 0; j < numListings; j++) {
+			SearchPage.Listing listing = results.getJob(j);
+
+			if (!listing.getDatePosted().isBefore(properties.getDateFilter())) {
+				if (listing.getJobTitle().toLowerCase().contains("intern"))
+					continue;
+						
+				LOG.info("Checking {}'s {} posting for a {}", 
+						listing.getCompanyName(),
+						listing.getDatePosted(),
+						listing.getJobTitle());
+				String info = listingToCsvRow(listing);
+				
+				ListingPage deets = listing.open();
+				int score = deets.getDescription().keywordSearch(properties.getKeywords());
+				results = deets.backToResults();
+
+				lines.add(info.concat(",").concat(Integer.toString(score)));
+			} else {
+				break;
+			}
+		}
+		
+		return results;
+	}
 }
