@@ -6,11 +6,15 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Properties;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class RunProperties {
 
-	private static RunProperties INSTANCE;
+	private static RunProperties instance;
 	private static String filePath = "src/main/resources/run_settings.properties";
 	private static final String relativePath = "target/";
+	private static Logger log = LogManager.getLogger(RunProperties.class);
 
 	private FileInputStream fileReader;
 	private String jobTitle;
@@ -26,8 +30,7 @@ public class RunProperties {
 			fileReader = new FileInputStream(filePath);
 			properties.load(fileReader);
 		} catch (IOException e) {
-			Logger.getInstance().error("Properties file not found in %s", System.getProperty("user.dir"));
-			Logger.getInstance().error(e.getLocalizedMessage());
+			log.atError().withThrowable(e).log("Properties file not found in %s", System.getProperty("user.dir"));
 			System.exit(-1);
 		}
 
@@ -42,11 +45,11 @@ public class RunProperties {
 	}
 
 	public static synchronized RunProperties getInstance() {
-		if (INSTANCE == null) {
-			INSTANCE = new RunProperties();
+		if (instance == null) {
+			instance = new RunProperties();
 		}
 
-		return INSTANCE;
+		return instance;
 	}
 
 	public String getJobTitle() {
@@ -70,14 +73,13 @@ public class RunProperties {
 	}
 
 	public synchronized void close() {
-		if (INSTANCE != null) {
-			INSTANCE = null;
+		if (instance != null) {
+			instance = null;
 
 			try {
 				fileReader.close();
 			} catch (Exception e) {
-				Logger.getInstance().error("Tried to close properties stream but was already closed");
-				Logger.getInstance().error(e.getLocalizedMessage());
+				log.atError().withThrowable(e).log("Tried to close properties stream but was already closed");
 			}
 		}
 	}
@@ -87,7 +89,7 @@ public class RunProperties {
 		StringBuilder s = new StringBuilder();
 		s.append(String.format("Searching for %s jobs in %s; ", jobTitle, location));
 		s.append("Excluding listings before " + dateFilter.toString());
-		s.append(String.format("\nSee %s for results", outPath));
+		s.append(String.format("%nSee %s for results", outPath));
 		
 		return s.toString();
 	}

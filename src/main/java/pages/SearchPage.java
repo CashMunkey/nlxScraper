@@ -16,7 +16,6 @@ import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.Wait;
 
-import common.Logger;
 import pages.components.PageComponent;
 
 public class SearchPage extends WebPage {
@@ -34,7 +33,7 @@ public class SearchPage extends WebPage {
 			wait.until(ExpectedConditions
 					.jsReturnsValue("var scrolling=true; window.scrollend=>scrolling=false; return !scrolling;"));
 		} catch (TimeoutException e) {
-			Logger.getInstance().debug("search page didn't scroll");
+			log.trace("search page didn't scroll");
 		}
 	}
 
@@ -93,10 +92,6 @@ public class SearchPage extends WebPage {
 		}
 		
 		public ListingPage open() {
-			/*
-			new Actions(driver).moveToElement(root).click(title).perform();
-	        ((RemoteWebDriver) driver).resetInputState();
-	        */
 			title.findElement(By.tagName("a")).sendKeys(Keys.RETURN);
 	        
 			return new ListingPage(driver);
