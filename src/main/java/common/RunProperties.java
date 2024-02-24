@@ -13,15 +13,17 @@ public class RunProperties {
 
 	private static RunProperties instance;
 	private static String filePath = "src/main/resources/run_settings.properties";
-	private static final String relativePath = "target/";
+	private static final String RELATIVE_PATH = "target/";
 	private static Logger log = LogManager.getLogger(RunProperties.class);
 
 	private FileInputStream fileReader;
+	private String browser;
 	private String jobTitle;
 	private String location;
 	private LocalDate dateFilter;
 	private String outPath;
 	private String[] keywords;
+	private String[] exclusions;
 
 	private RunProperties() {
 		Properties properties = new Properties();
@@ -34,6 +36,7 @@ public class RunProperties {
 			System.exit(-1);
 		}
 
+		browser = properties.getProperty("browser");
 		jobTitle = properties.getProperty("jobDescription");
 		location = properties.getProperty("location");
 		dateFilter = setDateFilter(properties.getProperty("dateFilter"));
@@ -42,6 +45,10 @@ public class RunProperties {
 		String rawKeys = properties.getProperty("keywords");
 		rawKeys = rawKeys.replace(" ", "").toLowerCase();
 		keywords = rawKeys.split(",");
+		
+		String rawExclusions = properties.getProperty("excludeJobs");
+		rawExclusions = rawExclusions.replace(" ", "").toLowerCase();
+		exclusions = rawExclusions.split(",");
 	}
 
 	public static synchronized RunProperties getInstance() {
@@ -52,6 +59,10 @@ public class RunProperties {
 		return instance;
 	}
 
+	public String getBrowser() {
+		return browser;
+	}
+	
 	public String getJobTitle() {
 		return jobTitle;
 	}
@@ -65,11 +76,15 @@ public class RunProperties {
 	}
 
 	public String getOutputPath() {
-		return relativePath + outPath;
+		return RELATIVE_PATH + outPath;
 	}
 
 	public String[] getKeywords() {
 		return keywords;
+	}
+	
+	public String[] getExcluded() {
+		return exclusions;
 	}
 
 	public synchronized void close() {

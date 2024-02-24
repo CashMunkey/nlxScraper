@@ -8,7 +8,6 @@ import java.util.List;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.NoSuchElementException;
-import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -27,34 +26,32 @@ public class SearchPage extends WebPage {
 	public SearchPage(WebDriver driver) {
 		super(driver);
 
-		try {
-			Wait<WebDriver> wait = new FluentWait<>(driver).withTimeout(Duration.ofMillis(2000))
-					.pollingEvery(Duration.ofMillis(250)).ignoring(NoSuchElementException.class);
-			wait.until(ExpectedConditions
-					.jsReturnsValue("var scrolling=true; window.scrollend=>scrolling=false; return !scrolling;"));
-		} catch (TimeoutException e) {
-			log.trace("search page didn't scroll");
-		}
+		Wait<WebDriver> wait = new FluentWait<>(driver).withTimeout(Duration.ofSeconds(30))
+				.pollingEvery(Duration.ofMillis(100)).ignoring(NoSuchElementException.class);
+		wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(allListings));
 	}
 
 	public SearchPage setMaxPerPage() {
-		Select dropdown = new Select(driver.findElement(perPage));
-		dropdown.selectByIndex(dropdown.getOptions().size() - 1);
+		open(driver.findElement(perPage), dd -> {
+			Select dropdown = new Select(dd);
+			dropdown.selectByIndex(dropdown.getOptions().size() - 1);
+		});
 
 		return new SearchPage(driver);
 	}
 
 	public SearchPage filterNewToOld() {
-		Select sort = new Select(driver.findElement(By.id("ddlVetJobFinder")));
-		sort.selectByIndex(7);
+		open(driver.findElement(By.id("ddlVetJobFinder")), sortBy -> {
+			Select sort = new Select(sortBy);
+			sort.selectByIndex(7);
+		});
+		
 		return new SearchPage(driver);
 	}
 
 	public List<Listing> getAllJobs() {
 		List<WebElement> listings = driver.findElements(allListings);
-		return listings.stream()
-				.map(tr -> new Listing(tr))
-				.toList();
+		return listings.stream().map(Listing::new).toList();
 	}
 
 	public Listing getJob(int index) {
@@ -63,7 +60,7 @@ public class SearchPage extends WebPage {
 	}
 
 	public SearchPage goToNextPage() {
-		driver.findElement(By.id("last")).sendKeys(Keys.RETURN);
+		open(driver.findElement(By.id("last")));
 		return new SearchPage(driver);
 	}
 
@@ -73,7 +70,7 @@ public class SearchPage extends WebPage {
 
 		return Integer.parseInt(lastPage.getText());
 	}
-	
+
 	public class Listing extends PageComponent {
 
 		private WebElement title;
@@ -90,21 +87,21 @@ public class SearchPage extends WebPage {
 			location = cells.get(2).getText();
 			date = cells.get(3).getText();
 		}
-		
+
 		public ListingPage open() {
 			title.findElement(By.tagName("a")).sendKeys(Keys.RETURN);
-	        
+
 			return new ListingPage(driver);
 		}
 
-		public String getJobTitle() {			
+		public String getJobTitle() {
 			return title.getText();
 		}
-		
+
 		public String getLink() {
 			return title.findElement(By.tagName("a")).getAttribute("href");
 		}
-		
+
 		public String getCompanyName() {
 			return company;
 		}
@@ -117,7 +114,6 @@ public class SearchPage extends WebPage {
 			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM/dd/yyyy");
 			return LocalDate.parse(date, formatter);
 		}
-
 	}
 
 }
