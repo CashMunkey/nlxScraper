@@ -16,19 +16,35 @@ import org.openqa.selenium.support.ui.Select;
 import org.openqa.selenium.support.ui.Wait;
 
 import pages.components.PageComponent;
+import pages.components.PaginationComponent;
 
 public class SearchPage extends WebPage {
 
 	private static final By perPage = By.id("numberOfRecordPerPage");
 	private static final By allListings = By
 			.cssSelector("#vet-result-section " + "table.cos-table-responsive tbody tr");
+	private static final By byPages = By.cssSelector("#pa-pagination > ul");
+	
+	public final PaginationComponent pageSelect;
 
 	public SearchPage(WebDriver driver) {
 		super(driver);
 
 		Wait<WebDriver> wait = new FluentWait<>(driver).withTimeout(Duration.ofSeconds(30))
 				.pollingEvery(Duration.ofMillis(100)).ignoring(NoSuchElementException.class);
-		wait.until(ExpectedConditions.visibilityOfAllElementsLocatedBy(allListings));
+		wait.until(ExpectedConditions.and(
+				ExpectedConditions.visibilityOfAllElementsLocatedBy(allListings),
+				ExpectedConditions.visibilityOfElementLocated(byPages)
+		));
+		
+		pageSelect = new PaginationComponent(driver.findElement(byPages));
+	}
+	
+	public SearchPage next() {
+		if(pageSelect.getActivePage() < pageSelect.countPages())
+			open(pageSelect.nextPage());
+			
+		return new SearchPage(driver);
 	}
 
 	public SearchPage setMaxPerPage() {
@@ -57,18 +73,6 @@ public class SearchPage extends WebPage {
 	public Listing getJob(int index) {
 		List<WebElement> listings = driver.findElements(allListings);
 		return new Listing(listings.get(index));
-	}
-
-	public SearchPage goToNextPage() {
-		open(driver.findElement(By.id("last")));
-		return new SearchPage(driver);
-	}
-
-	public int getNumberOfPages() {
-		List<WebElement> pages = driver.findElements(By.cssSelector("#pagination > ul > li"));
-		WebElement lastPage = pages.get(pages.size() - 1);
-
-		return Integer.parseInt(lastPage.getText());
 	}
 
 	public class Listing extends PageComponent {

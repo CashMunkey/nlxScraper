@@ -49,7 +49,7 @@ class BrowserTest {
 		LandingPage start = new LandingPage(driver);
 		SearchPage results = start.search(jobTitle, location);
 		
-		int pageCount = Math.min(10, results.getNumberOfPages());
+		int pageCount = Math.min(10, results.pageSelect.countPages());
 		List<SearchPage.Listing> prevListings = null;
 		for(int i = 0; i < pageCount; i++) {
 			List<SearchPage.Listing> currentListings = results.getAllJobs();
@@ -61,7 +61,7 @@ class BrowserTest {
 			prevListings = currentListings;
 			
 			if (i < pageCount - 1) {
-				results = results.goToNextPage();
+				results = results.next();
 			}
 		}
 	}

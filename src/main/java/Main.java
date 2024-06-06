@@ -31,7 +31,7 @@ public class Main {
 		results = results.filterNewToOld();	
 
 		try {
-			int pageCount = results.getNumberOfPages();
+			int pageCount = results.pageSelect.countPages();
 			
 			for (int i = 0; i < pageCount; i++) {
 				SearchPage prev = results;
@@ -52,7 +52,7 @@ public class Main {
 				if (results.equals(prev)) {
 					return;
 				} else if (i < pageCount - 1) {
-					results = results.goToNextPage();
+					results = results.next();
 				}
 			}
 		} catch (Exception e) {

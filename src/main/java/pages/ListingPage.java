@@ -14,21 +14,21 @@ import pages.components.JobDescription;
 
 public class ListingPage extends WebPage {
 
-	private static By byDesc = By.id("ctl17_lblDesc");
-	private static By byReturn = By.id("btnBacktoJobSearch");
+	private static By byDesc = By.cssSelector("table.cos-table-detail");
+	private static By byPrevPageBottom = By.id("btnBacktoJobSearch");
 
 	public ListingPage(WebDriver driver) {
 		super(driver);
 
-		Wait<WebDriver> wait = new FluentWait<>(driver).withTimeout(Duration.ofSeconds(30))
+		Wait<WebDriver> wait = new FluentWait<>(driver).withTimeout(Duration.ofSeconds(45))
 				.pollingEvery(Duration.ofMillis(500)).ignoring(NoSuchElementException.class);
 		wait.until(ExpectedConditions.and(
-				ExpectedConditions.elementToBeClickable(byReturn), 
+				ExpectedConditions.elementToBeClickable(byPrevPageBottom), 
 				ExpectedConditions.visibilityOfElementLocated(byDesc)));
 	}
 
 	public SearchPage backToResults() {
-		open(driver.findElement(byReturn));
+		open(driver.findElement(byPrevPageBottom));
 
 		return new SearchPage(driver);
 	}
